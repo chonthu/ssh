@@ -10,8 +10,10 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"os/user"
 	"path/filepath"
+	"strconv"
+
+	"github.com/chonthu/ssh/config"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -33,12 +35,7 @@ type MakeConfig struct {
 // returns ssh.Signer from user you running app home path + cutted key path.
 // (ex. pubkey,err := getKeyFile("/.ssh/id_rsa") )
 func getKeyFile(keypath string) (ssh.Signer, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-
-	file := usr.HomeDir + keypath
+	file := keypath
 	buf, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
@@ -52,8 +49,31 @@ func getKeyFile(keypath string) (ssh.Signer, error) {
 	return pubkey, nil
 }
 
+func stringInSlice(str string, list []string) bool {
+	for _, v := range list {
+		if v == str {
+			return true
+		}
+	}
+	return false
+}
+
 // connects to remote server using MakeConfig struct and returns *ssh.Session
 func (ssh_conf *MakeConfig) Connect() (*ssh.Session, error) {
+
+	hosts, err := config.ParseSSHConfig(os.Getenv("HOME") + "/.ssh/config")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, host := range hosts {
+		if stringInSlice(ssh_conf.Server, host.Host) {
+			ssh_conf.Server = host.HostName
+			ssh_conf.User = host.User
+			ssh_conf.Port = strconv.Itoa(host.Port)
+			ssh_conf.Key = []string{host.IdentityFile}
+		}
+	}
 
 	var keys []ssh.Signer
 

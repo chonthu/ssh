@@ -62,16 +62,14 @@ func stringInSlice(str string, list []string) bool {
 func (ssh_conf *MakeConfig) Connect() (*ssh.Session, error) {
 
 	hosts, err := config.ParseSSHConfig(os.Getenv("HOME") + "/.ssh/config")
-	if err != nil {
-		return nil, err
-	}
-
-	for _, host := range hosts {
-		if stringInSlice(ssh_conf.Server, host.Host) {
-			ssh_conf.Server = host.HostName
-			ssh_conf.User = host.User
-			ssh_conf.Port = strconv.Itoa(host.Port)
-			ssh_conf.Key = []string{host.IdentityFile}
+	if err == nil {
+		for _, host := range hosts {
+			if stringInSlice(ssh_conf.Server, host.Host) {
+				ssh_conf.Server = host.HostName
+				ssh_conf.User = host.User
+				ssh_conf.Port = strconv.Itoa(host.Port)
+				ssh_conf.Key = []string{host.IdentityFile}
+			}
 		}
 	}
 

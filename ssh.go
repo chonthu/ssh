@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -16,6 +17,7 @@ import (
 	"github.com/chonthu/ssh/config"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 // Contains main authority information.
@@ -61,6 +63,9 @@ func stringInSlice(str string, list []string) bool {
 // connects to remote server using MakeConfig struct and returns *ssh.Session
 func (ssh_conf *MakeConfig) Connect() (*ssh.Session, error) {
 
+	auths := []ssh.AuthMethod{}
+
+	// Parse ssh config
 	hosts, err := config.ParseSSHConfig(os.Getenv("HOME") + "/.ssh/config")
 	if err == nil {
 		for _, host := range hosts {
@@ -83,11 +88,17 @@ func (ssh_conf *MakeConfig) Connect() (*ssh.Session, error) {
 		keys = append(keys, pubkey)
 	}
 
+	// in POSIX systems, try ssh auth sock
+	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
+		auths = append(auths, ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers))
+		defer sshAgent.Close()
+	}
+
+	auths = append(auths, ssh.PublicKeys(keys...))
+
 	config := &ssh.ClientConfig{
 		User: ssh_conf.User,
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(keys...),
-		},
+		Auth: auths,
 	}
 
 	client, err := ssh.Dial("tcp", ssh_conf.Server+":"+ssh_conf.Port, config)

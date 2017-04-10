@@ -83,6 +83,7 @@ func (ssh_conf *MakeConfig) Connect() (*ssh.Session, error) {
 	for _, v := range ssh_conf.Key {
 		pubkey, err := getKeyFile(v)
 		if err != nil {
+			fmt.Printf("key not added due to an error: %s", err)
 			continue
 		}
 		keys = append(keys, pubkey)
@@ -90,7 +91,14 @@ func (ssh_conf *MakeConfig) Connect() (*ssh.Session, error) {
 
 	// in POSIX systems, try ssh auth sock
 	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
-		auths = append(auths, ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers))
+
+		ag, err := agent.NewClient(sshAgent).Signers()
+		if err == nil && len(ag) > 0 {
+			for _, s := range ag {
+				keys = append(keys, s)
+			}
+		}
+
 		defer sshAgent.Close()
 	}
 

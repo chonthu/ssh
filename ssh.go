@@ -105,8 +105,9 @@ func (ssh_conf *MakeConfig) Connect() (*ssh.Session, error) {
 	auths = append(auths, ssh.PublicKeys(keys...))
 
 	config := &ssh.ClientConfig{
-		User: ssh_conf.User,
-		Auth: auths,
+		User:            ssh_conf.User,
+		Auth:            auths,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
 	client, err := ssh.Dial("tcp", ssh_conf.Server+":"+ssh_conf.Port, config)
